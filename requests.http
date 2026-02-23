@@ -1,5 +1,5 @@
 ### 1. Cadastrar novo ativo
-POST http://localhost:8080/investments
+POST http://localhost:3000/investments
 Content-Type: application/json
 
 {
@@ -11,16 +11,16 @@ Content-Type: application/json
 }
 
 ### 2. Listar todos os ativos
-GET http://localhost:8080/investments
+GET http://localhost:3000/investments
 
 ### Filtro por tipo (mesmo endpoint 2)
-GET http://localhost:8080/investments?type=CRIPTO
+GET http://localhost:3000/investments?type=CRIPTO
 
 ### 3. Buscar por ID
-GET http://localhost:8080/investments/1
+GET http://localhost:3000/investments/1
 
 ### 4. Atualizar ativo
-PUT http://localhost:8080/investments/1
+PUT http://localhost:3000/investments/1
 Content-Type: application/json
 
 {
@@ -32,7 +32,7 @@ Content-Type: application/json
 }
 
 ### 5. Resumo da carteira
-GET http://localhost:8080/investments/summary
+GET http://localhost:3000/investments/summary
 
 ### 6. Remover ativo
-DELETE http://localhost:8080/investments/1
+DELETE http://localhost:3000/investments/1

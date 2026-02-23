@@ -26,7 +26,7 @@ USER spring:spring
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/investments/summary || exit 1
+    CMD curl -f http://localhost:3000/investments/summary || exit 1
 
-EXPOSE 8080
+EXPOSE 3000
 ENTRYPOINT ["java", "-jar", "app.jar"]

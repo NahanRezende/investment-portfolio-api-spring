@@ -64,11 +64,11 @@ Executar:
 
 API:
 
-- `http://localhost:8080`
+- `http://localhost:3000`
 
 Swagger UI:
 
-- `http://localhost:8080/swagger-ui.html`
+- `http://localhost:3000/swagger-ui.html`
 
 ### 3.3 Rodar com Docker (se aplicável)
 
@@ -91,7 +91,7 @@ Observação:
 
 ## 4. Endpoints Disponíveis (6 endpoints reais)
 
-Base URL: `http://localhost:8080`
+Base URL: `http://localhost:3000`
 
 ### 4.1 POST `/investments`
 
