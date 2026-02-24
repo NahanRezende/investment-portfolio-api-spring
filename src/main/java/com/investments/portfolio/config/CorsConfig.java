@@ -1,5 +1,6 @@
 package com.investments.portfolio.config;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -31,7 +32,7 @@ public class CorsConfig {
     }
 
     @Bean
-    public CorsFilter corsFilter(CorsConfigurationSource source) {
+    public CorsFilter corsFilter(@Qualifier("corsConfigurationSource") CorsConfigurationSource source) {
         return new CorsFilter(source);
     }
 }
