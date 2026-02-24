@@ -1,21 +1,22 @@
 package com.investments.portfolio.model.dto;
 
 import com.investments.portfolio.model.enums.AssetType;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
-@Data
-@Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SummaryDTO {
 
     private BigDecimal totalInvested;
     private Map<AssetType, BigDecimal> totalByType;
     private Integer assetCount;
+
 }

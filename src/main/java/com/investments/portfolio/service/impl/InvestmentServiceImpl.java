@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,42 +31,27 @@ public class InvestmentServiceImpl implements InvestmentService {
 
     @Override
     public InvestmentResponseDTO createInvestment(InvestmentRequestDTO requestDTO) {
-        log.info("Criando novo investimento: {}", requestDTO.getSymbol());
-
-        String normalizedSymbol = requestDTO.getSymbol().toUpperCase().trim();
+        String symbol = normalizeSymbol(requestDTO.getSymbol());
 
         Investment investment = Investment.builder()
                 .type(requestDTO.getType())
-                .symbol(normalizedSymbol)
-                // Campo interno mantido na entidade, mas nao exposto/recebido pelo contrato atual
-                .name(normalizedSymbol)
+                .symbol(symbol)
+                .name(symbol)
                 .quantity(requestDTO.getQuantity())
                 .purchasePrice(requestDTO.getPurchasePrice())
                 .purchaseDate(requestDTO.getPurchaseDate())
                 .build();
 
-        try {
-            BigDecimal currentPrice = marketDataService.getCurrentPrice(
-                    investment.getSymbol(),
-                    investment.getType()
-            );
-            investment.setCurrentPrice(currentPrice);
-        } catch (Exception e) {
-            log.warn("Erro ao buscar preco de mercado para {}: {}. Usando preco de compra como fallback.",
-                    investment.getSymbol(), e.getMessage());
-            investment.setCurrentPrice(requestDTO.getPurchasePrice());
-        }
+        BigDecimal marketPrice = resolveMarketPriceOrFallback(symbol, requestDTO.getType(), requestDTO.getPurchasePrice());
+        investment.setCurrentPrice(marketPrice);
 
-        Investment savedInvestment = investmentRepository.save(investment);
-        log.info("Investimento criado com ID: {}", savedInvestment.getId());
-
-        return mapToResponseDTO(savedInvestment);
+        Investment saved = investmentRepository.save(investment);
+        return mapToResponseDTO(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<InvestmentResponseDTO> getAllInvestments() {
-        log.info("Buscando todos os investimentos");
         return investmentRepository.findAll()
                 .stream()
                 .map(this::mapToResponseDTO)
@@ -76,7 +61,6 @@ public class InvestmentServiceImpl implements InvestmentService {
     @Override
     @Transactional(readOnly = true)
     public List<InvestmentResponseDTO> getInvestmentsByType(AssetType type) {
-        log.info("Buscando investimentos por tipo: {}", type);
         return investmentRepository.findByType(type)
                 .stream()
                 .map(this::mapToResponseDTO)
@@ -86,70 +70,59 @@ public class InvestmentServiceImpl implements InvestmentService {
     @Override
     @Transactional(readOnly = true)
     public InvestmentResponseDTO getInvestmentById(Long id) {
-        log.info("Buscando investimento por ID: {}", id);
         return mapToResponseDTO(findInvestmentById(id));
     }
 
     @Override
     public InvestmentResponseDTO updateInvestment(Long id, InvestmentRequestDTO requestDTO) {
-        log.info("Atualizando investimento ID: {}", id);
-
         Investment investment = findInvestmentById(id);
-        String normalizedSymbol = requestDTO.getSymbol().toUpperCase().trim();
+        String symbol = normalizeSymbol(requestDTO.getSymbol());
 
         investment.setType(requestDTO.getType());
-        investment.setSymbol(normalizedSymbol);
-        investment.setName(normalizedSymbol);
+        investment.setSymbol(symbol);
+        investment.setName(symbol);
         investment.setQuantity(requestDTO.getQuantity());
         investment.setPurchasePrice(requestDTO.getPurchasePrice());
         investment.setPurchaseDate(requestDTO.getPurchaseDate());
 
         if (investment.getCurrentPrice() == null) {
-            BigDecimal currentPrice = marketDataService.getCurrentPrice(
-                    investment.getSymbol(),
-                    investment.getType()
-            );
-            investment.setCurrentPrice(currentPrice);
+            BigDecimal marketPrice = resolveMarketPriceOrFallback(symbol, requestDTO.getType(), requestDTO.getPurchasePrice());
+            investment.setCurrentPrice(marketPrice);
         }
 
-        Investment updatedInvestment = investmentRepository.save(investment);
-        log.info("Investimento ID: {} atualizado", id);
-
-        return mapToResponseDTO(updatedInvestment);
+        Investment updated = investmentRepository.save(investment);
+        return mapToResponseDTO(updated);
     }
 
     @Override
     public void deleteInvestment(Long id) {
-        log.info("Deletando investimento ID: {}", id);
-
         if (!investmentRepository.existsById(id)) {
             throw new EntityNotFoundException("Investimento não encontrado com ID: " + id);
         }
-
         investmentRepository.deleteById(id);
-        log.info("Investimento ID: {} deletado", id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public SummaryDTO getSummary() {
-        log.info("Gerando resumo da carteira");
-
         List<Investment> investments = investmentRepository.findAll();
         int assetCount = investments.size();
 
         BigDecimal totalInvested = investments.stream()
-                .map(i -> i.getPurchasePrice().multiply(i.getQuantity()))
+                .map(this::investedValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Map<AssetType, BigDecimal> totalByType = Arrays.stream(AssetType.values())
-                .collect(Collectors.toMap(
-                        type -> type,
-                        type -> investments.stream()
-                                .filter(i -> i.getType() == type)
-                                .map(i -> i.getPurchasePrice().multiply(i.getQuantity()))
-                                .reduce(BigDecimal.ZERO, BigDecimal::add)
+        Map<AssetType, BigDecimal> totalByType = investments.stream()
+                .filter(i -> i.getType() != null)
+                .collect(Collectors.groupingBy(
+                        Investment::getType,
+                        () -> new EnumMap<>(AssetType.class),
+                        Collectors.mapping(this::investedValue, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
                 ));
+
+        for (AssetType type : AssetType.values()) {
+            totalByType.putIfAbsent(type, BigDecimal.ZERO);
+        }
 
         return SummaryDTO.builder()
                 .totalInvested(totalInvested)
@@ -160,28 +133,21 @@ public class InvestmentServiceImpl implements InvestmentService {
 
     @Override
     public InvestmentResponseDTO updateMarketPrice(Long id, BigDecimal currentPrice) {
-        log.info("Atualizando preco de mercado para investimento ID: {}", id);
-
         Investment investment = findInvestmentById(id);
         investment.setCurrentPrice(currentPrice);
-
-        Investment updatedInvestment = investmentRepository.save(investment);
-        log.info("Preco de mercado atualizado para investimento ID: {}", id);
-
-        return mapToResponseDTO(updatedInvestment);
+        Investment updated = investmentRepository.save(investment);
+        return mapToResponseDTO(updated);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<InvestmentResponseDTO> searchInvestments(String symbol, String name) {
-        log.info("Buscando investimentos com simbolo: {}, nome: {}", symbol, name);
-
         List<Investment> investments;
 
         if (symbol != null && !symbol.isBlank()) {
-            investments = investmentRepository.findBySymbolContainingIgnoreCase(symbol);
+            investments = investmentRepository.findBySymbolContainingIgnoreCase(symbol.trim());
         } else if (name != null && !name.isBlank()) {
-            investments = investmentRepository.findByNameContainingIgnoreCase(name);
+            investments = investmentRepository.findByNameContainingIgnoreCase(name.trim());
         } else {
             investments = investmentRepository.findAll();
         }
@@ -193,10 +159,7 @@ public class InvestmentServiceImpl implements InvestmentService {
 
     private Investment findInvestmentById(Long id) {
         return investmentRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Investimento nao encontrado com ID: {}", id);
-                    return new EntityNotFoundException("Investimento não encontrado com ID: " + id);
-                });
+                .orElseThrow(() -> new EntityNotFoundException("Investimento não encontrado com ID: " + id));
     }
 
     private InvestmentResponseDTO mapToResponseDTO(Investment investment) {
@@ -208,5 +171,21 @@ public class InvestmentServiceImpl implements InvestmentService {
                 .purchasePrice(investment.getPurchasePrice())
                 .purchaseDate(investment.getPurchaseDate())
                 .build();
+    }
+
+    private String normalizeSymbol(String raw) {
+        return raw == null ? "" : raw.toUpperCase().trim();
+    }
+
+    private BigDecimal resolveMarketPriceOrFallback(String symbol, AssetType type, BigDecimal fallback) {
+        try {
+            return marketDataService.getCurrentPrice(symbol, type);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private BigDecimal investedValue(Investment investment) {
+        return investment.getPurchasePrice().multiply(investment.getQuantity());
     }
 }

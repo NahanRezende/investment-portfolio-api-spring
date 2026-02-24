@@ -2,28 +2,28 @@ package com.investments.portfolio.model.dto;
 
 import com.investments.portfolio.model.enums.AssetType;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Data
-@Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class InvestmentRequestDTO {
 
     @NotNull(message = "Tipo do ativo e obrigatorio")
     private AssetType type;
 
-    @NotBlank(message = "Simbolo e obrigatorio")
+    @NotEmpty(message = "Simbolo e obrigatorio")
     @Size(max = 20, message = "Simbolo deve ter no maximo 20 caracteres")
     private String symbol;
 

@@ -17,14 +17,12 @@ public class ModelMapperConfig {
                 .setMatchingStrategy(MatchingStrategies.STRICT)
                 .setSkipNullEnabled(true);
         
-        // Configurações específicas para mapeamento
         configureInvestmentMappings(modelMapper);
         
         return modelMapper;
     }
     
     private void configureInvestmentMappings(ModelMapper modelMapper) {
-        // Mapeamento de InvestmentRequestDTO para Investment
         modelMapper.typeMap(InvestmentRequestDTO.class, Investment.class)
                 .addMappings(mapper -> {
                     mapper.skip(Investment::setId);

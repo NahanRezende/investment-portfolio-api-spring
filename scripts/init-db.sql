@@ -1,4 +1,3 @@
--- Inicializacao do banco de dados
 -- Criar tabela de investimentos
 CREATE TABLE IF NOT EXISTS investments (
     id BIGSERIAL PRIMARY KEY,
@@ -16,43 +15,32 @@ CREATE TABLE IF NOT EXISTS investments (
     CONSTRAINT chk_current_price_non_negative CHECK (current_price >= 0 OR current_price IS NULL)
 );
 
--- Indices para performance
-CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type);
-CREATE INDEX IF NOT EXISTS idx_investments_symbol ON investments(symbol);
-CREATE INDEX IF NOT EXISTS idx_investments_purchase_date ON investments(purchase_date);
-
--- Dados iniciais para demonstracao (apenas se a tabela estiver vazia)
+-- Dados para demonstracao
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM investments LIMIT 1) THEN
         INSERT INTO investments (type, symbol, name, quantity, purchase_price, current_price, purchase_date) VALUES
-            ('ACAO', 'PETR4', 'Petrobras PN', 100, 28.50, 30.50, '2024-01-15'),
-            ('ACAO', 'VALE3', 'Vale ON', 50, 65.80, 68.90, '2024-02-20'),
-            ('ACAO', 'ITUB4', 'Itau Unibanco PN', 200, 30.15, 32.15, '2024-03-10'),
-            ('CRIPTO', 'BTC', 'Bitcoin', 0.5, 200000.00, 250000.00, '2023-12-10'),
-            ('CRIPTO', 'ETH', 'Ethereum', 2.0, 14000.00, 16000.00, '2024-03-05'),
-            ('FUNDO', 'BOVA11', 'iShares Ibovespa', 20, 100.50, 105.30, '2024-04-12'),
-            ('FUNDO', 'IVVB11', 'iShares S&P 500', 15, 240.80, 245.80, '2024-05-01'),
-            ('RENDA_FIXA', 'CDB', 'CDB Banco XP', 10, 1000.00, 1025.00, '2024-05-18');
+            ('ACAO', 'BBAS3', 'Banco do Brasil ON', 80, 51.20, 54.90, '2024-06-14'),
+            ('ACAO', 'WEGE3', 'WEG ON', 35, 37.60, 39.10, '2024-07-03'),
+            ('ACAO', 'ABEV3', 'Ambev ON', 300, 13.45, 14.10, '2024-08-22'),
+            ('CRIPTO', 'BTC', 'Bitcoin', 0.18, 285000.00, 312000.00, '2024-09-10'),
+            ('CRIPTO', 'SOL', 'Solana', 12.0, 520.00, 610.00, '2024-10-05'),
+            ('FUNDO', 'SMAL11', 'iShares Small Cap', 25, 118.40, 121.70, '2024-11-18'),
+            ('FUNDO', 'HASH11', 'Hashdex Nasdaq Crypto', 10, 62.30, 59.80, '2024-12-02'),
+            ('RENDA_FIXA', 'LCI', 'LCI Banco Inter', 6, 5000.00, 5225.00, '2025-01-20');
     END IF;
 END $$;
 
--- Compatibilidade com bases antigas (enums legados)
-UPDATE investments SET type = 'ACAO' WHERE type = 'STOCK';
-UPDATE investments SET type = 'CRIPTO' WHERE type = 'CRYPTO';
-UPDATE investments SET type = 'FUNDO' WHERE type = 'FUND';
-UPDATE investments SET type = 'RENDA_FIXA' WHERE type = 'FIXED_INCOME';
-
--- Funcao para atualizar o timestamp de atualizacao
+-- Função de atualização do timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ language 'plpgsql';
 
--- Trigger para atualizar automaticamente o updated_at
+-- Trigger que atualiza updated_at
 DROP TRIGGER IF EXISTS update_investments_updated_at ON investments;
 CREATE TRIGGER update_investments_updated_at
     BEFORE UPDATE ON investments

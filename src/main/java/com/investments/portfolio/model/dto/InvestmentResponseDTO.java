@@ -1,18 +1,18 @@
 package com.investments.portfolio.model.dto;
 
 import com.investments.portfolio.model.enums.AssetType;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Data
-@Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class InvestmentResponseDTO {
 
     private Long id;
@@ -21,4 +21,5 @@ public class InvestmentResponseDTO {
     private BigDecimal quantity;
     private BigDecimal purchasePrice;
     private LocalDate purchaseDate;
+
 }
